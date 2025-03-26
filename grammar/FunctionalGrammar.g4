@@ -14,7 +14,7 @@ type_expression: TYPE_ID
 value_expression: VAL_ID
     | '(' value_expression ')'
     | value_expression value_expression
-    | '(' (args+=VAL_ID)+ ')' '=>' value_expression;
+    | '(' '(' (args+=VAL_ID)+ ')' '=>' value_expression ')';
 
 type_statement: 
     'type' type_name=TYPE_ID ('=' expression=type_expression)? ';';
