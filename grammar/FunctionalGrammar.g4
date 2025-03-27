@@ -5,25 +5,30 @@ VAL_ID: [a-z][a-zA-Z_0-9]* ;
 
 
 WS: [ \t\n\r\f]+ -> skip ;
+COMMENT: '/*' .*? '*/' -> skip;
+LINE_COMMENT: '//' ~[\r\n]* -> skip;
 
 
 type_expression: TYPE_ID
     | '(' type_expression ')'
-    | type_expression '->' type_expression;
+    | argument_type=type_expression '->' return_type=type_expression;
 
 value_expression: VAL_ID
-    | '(' value_expression ')'
-    | value_expression value_expression
-    | '(' '(' (args+=VAL_ID)+ ')' '=>' value_expression ')';
+    | '(' expression=value_expression ')'
+    | func=value_expression argument=value_expression
+    | '{' '(' (args+=VAL_ID)+ ')' '=>' expression=value_expression '}';
 
 type_statement: 
     'type' type_name=TYPE_ID ('=' expression=type_expression)? ';';
 
-val_statement: 
+value_statement: 
     'val' var_name=VAL_ID ':' type_expression ('=' expression=value_expression)? ';';
 
+eval_statement:
+    'eval' expression=value_expression ';';
 
 statement: type_statement 
-    | val_statement;
+    | value_statement
+    | eval_statement;
 
-program: statement+;
+program: statement* EOF;

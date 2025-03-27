@@ -1,0 +1,29 @@
+@top program {
+  (TYPE | VAL | SEMI | TYPE_ARROW | ABSTRACTION_ARROW | TYPE_ID | VAL_ID | EVAL)+
+}
+
+@skip {
+    WS
+    COMMENT
+    LINE_COMMENT
+}
+
+@tokens {
+  @precedence {
+    TYPE,
+    VAL,
+    EVAL,
+    VAL_ID
+  }
+  SEMI {";"}
+  TYPE {"type"}
+  VAL {"val"}
+  EVAL {"eval"}
+  TYPE_ARROW {"->"}
+  ABSTRACTION_ARROW {"=>"}
+  TYPE_ID {$[A-Z]$[a-zA-Z_0-9]*}
+  VAL_ID {$[a-z]$[a-zA-Z_0-9]*}
+  WS {$[ \t\n\r\f]+}
+  COMMENT {"/*"![]*"*/"}
+  LINE_COMMENT {"//"![\r\n]*}
+}
