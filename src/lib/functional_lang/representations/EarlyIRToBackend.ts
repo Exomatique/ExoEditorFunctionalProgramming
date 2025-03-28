@@ -20,7 +20,13 @@ import {
 export interface HoverData {
 	from: number;
 	to: number;
-	typeValue: string;
+	message: string;
+}
+
+interface ToBeUnifiedAnnotation {
+	from: number;
+	to: number;
+	value: BackendValueExpression;
 }
 
 export class EarlyIRToBackend extends EarlyIRVisitor<any> {
@@ -29,6 +35,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 	pretty_printer: EarlyIRPrettyPrinterVisitor = new EarlyIRPrettyPrinterVisitor();
 	backend_pretty_printer: BackendIRPrettyPrinterVisitor = new BackendIRPrettyPrinterVisitor();
 	diagnostics: Diagnostic[] = [];
+	toBeUnifiedAnnotation: ToBeUnifiedAnnotation[] = [];
 	annotation_list: HoverData[] = [];
 
 	visitTypeAtomic(v: {
@@ -234,11 +241,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			type: 'ValueExpressionApplication',
 			argument: argument_value,
 			function: function_value,
-			value_type: {
-				type: 'TypeExpressionArrow',
-				argumentType: argument_value.value_type,
-				returnType: function_value.value_type
-			}
+			value_type: current_typeCopy
 		};
 
 		this.annotation(v.ctx, value);
@@ -316,7 +319,6 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		}
 
 		expression.value_type = type;
-		this.annotation(v.expression.ctx, expression);
 
 		return {
 			type: 'Eval',
@@ -329,7 +331,25 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		const thisCopy = this;
 		return {
 			type: 'Program',
-			statements: v.statements.map((v) => thisCopy.visit(v) as Statement)
+			statements: v.statements.map((v) => {
+				thisCopy.toBeUnifiedAnnotation = [];
+				thisCopy.visit(v) as Statement;
+
+				this.annotation_list.push(
+					...thisCopy.toBeUnifiedAnnotation
+						.map((v) => ({ ...v, value: this.table.applyUnificationToValueTree(v.value) }))
+						.map((v): HoverData => {
+							return {
+								from: v.from,
+								to: v.to,
+								message:
+									this.backend_pretty_printer.visit(v.value) +
+									' : ' +
+									thisCopy.backend_pretty_printer.visit(v.value.value_type)
+							};
+						})
+				);
+			})
 		};
 	}
 
@@ -343,14 +363,10 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 	}
 
 	annotation(ctx: ParserRuleContext, expression: BackendValueExpression): void {
-		if (JSON.stringify(expression.value_type).includes('Generic')) return;
-		this.annotation_list.push({
+		this.toBeUnifiedAnnotation.push({
 			from: ctx.start?.start || 0,
 			to: (ctx.stop?.stop || 0) + 1,
-			typeValue:
-				this.backend_pretty_printer.visit(expression) +
-				' : ' +
-				this.backend_pretty_printer.visitTypeExpression(expression.value_type)
+			value: expression
 		});
 	}
 }

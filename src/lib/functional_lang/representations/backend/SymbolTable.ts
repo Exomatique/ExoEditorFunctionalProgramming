@@ -1,4 +1,4 @@
-import { Type, TypeExpression, Value } from './BackendTypes';
+import { Type, TypeExpression, Value, ValueExpression } from './BackendTypes';
 
 export class SymbolTable {
 	stack: SymbolTableLevel[] = [new SymbolTableLevel()];
@@ -86,6 +86,53 @@ export class SymbolTable {
 		}
 
 		return !error ? element.collapsed_generic.get(generic_id) : undefined;
+	}
+
+	applyUnificationToTypeTree(type: TypeExpression): TypeExpression {
+		switch (type.type) {
+			case 'TypeExpressionType':
+				return type;
+			case 'TypeExpressionArrow':
+				return {
+					type: 'TypeExpressionArrow',
+					argumentType: this.applyUnificationToTypeTree(type.argumentType),
+					returnType: this.applyUnificationToTypeTree(type.returnType)
+				};
+			case 'TypeExpressionGeneric': {
+				const generic_id = type.generic_id;
+
+				let element: SymbolTableLevel | undefined = this.stack[0];
+				while (element && !element.generic_types.has(generic_id)) element = element.parent;
+				if (!element) throw new Error('Unknown generic id');
+
+				return element.collapsed_generic.get(generic_id) || type;
+			}
+		}
+	}
+
+	applyUnificationToValueTree(value: ValueExpression): ValueExpression {
+		switch (value.type) {
+			case 'ValueExpressionValue':
+				return {
+					type: 'ValueExpressionValue',
+					value_type: this.applyUnificationToTypeTree(value.value_type),
+					id: value.id
+				};
+			case 'ValueExpressionApplication':
+				return {
+					type: 'ValueExpressionApplication',
+					argument: this.applyUnificationToValueTree(value.argument),
+					function: this.applyUnificationToValueTree(value.function),
+					value_type: this.applyUnificationToTypeTree(value.value_type)
+				};
+			case 'ValueExpressionAbstraction':
+				return {
+					type: 'ValueExpressionAbstraction',
+					argument: value.argument,
+					expression: this.applyUnificationToValueTree(value.expression),
+					value_type: this.applyUnificationToTypeTree(value.value_type)
+				};
+		}
 	}
 
 	newValue(value: Value) {

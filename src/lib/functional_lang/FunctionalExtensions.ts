@@ -96,7 +96,7 @@ export const functionalExtensions = () => {
 					create: () => {
 						let dom = document.createElement('div');
 						dom.className = 'cm-tooltip-cursor';
-						dom.textContent = v.typeValue;
+						dom.textContent = v.message;
 						return { dom };
 					}
 				};
