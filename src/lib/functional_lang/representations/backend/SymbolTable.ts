@@ -55,7 +55,6 @@ export class SymbolTable {
 		if (!element) throw new Error('Unknown generic id');
 
 		let constraints = element.generic_types.get(generic_id) as TypeExpression[];
-
 		let error = true;
 
 		while (constraints.length !== 0) {

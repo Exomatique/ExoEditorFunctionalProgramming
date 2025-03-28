@@ -167,7 +167,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			// Check if type is valid
 			this.error_diagnostic(
 				v.ctx,
-				`Value type1 : ${this.pretty_printer.visit(value_ref.value_type)}, expected type : ${this.pretty_printer.visit(this.current_type)}`
+				`Value type : ${this.pretty_printer.visit(value_ref.value_type)}, expected type : ${this.pretty_printer.visit(this.current_type)}`
 			);
 		}
 
@@ -177,10 +177,14 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			value_type: this.current_type as BackendTypeExpression
 		});
 
+		if (value_ref.type === 'ValueAssignment') {
+			return value_ref.expression;
+		}
+
 		return {
 			type: 'ValueExpressionValue',
 			id: v.id,
-			value_type: this.current_type as BackendTypeExpression
+			value_type: value_ref.value_type
 		};
 	}
 
@@ -205,7 +209,13 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		this.current_type = generic_type;
 		const argument_value = this.visit(v.argument) as BackendValueExpression;
 
-		if (function_value.value_type.type !== 'TypeExpressionArrow') {
+		if (function_value.value_type.type === 'TypeExpressionGeneric') {
+			this.table.newGenericConstraint(function_value.value_type.generic_id, {
+				type: 'TypeExpressionArrow',
+				argumentType: argument_value.value_type,
+				returnType: current_typeCopy
+			});
+		} else if (function_value.value_type.type !== 'TypeExpressionArrow') {
 			const expected_type: BackendTypeExpression = {
 				type: 'TypeExpressionArrow',
 				argumentType: argument_value.value_type,
@@ -214,7 +224,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 
 			this.error_diagnostic(
 				v.function.ctx,
-				`Value type2 : ${this.pretty_printer.visit(function_value.value_type)}, expected type :${this.pretty_printer.visit(expected_type)}`
+				`Value type : ${this.pretty_printer.visit(function_value.value_type)}, expected type :${this.pretty_printer.visit(expected_type)}`
 			);
 		} else if (
 			!this.table.checkTypeEquality(
@@ -224,14 +234,17 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		) {
 			this.error_diagnostic(
 				v.argument.ctx,
-				`Value type3 : ${this.pretty_printer.visit(argument_value.value_type)}, expected type :${this.pretty_printer.visit(function_value.value_type.argumentType)}`
+				`Value type : ${this.pretty_printer.visit(argument_value.value_type)}, expected type :${this.pretty_printer.visit(function_value.value_type.argumentType)}`
 			);
 		}
 
 		if (!this.table.unifyGeneric(generic_type.generic_id)) {
 			this.error_diagnostic(
-				v.argument.ctx,
-				`Value type of ${this.pretty_printer.visit(v)} could not be determined (Unification failed)`
+				v.function.ctx,
+				`Value type of ${this.pretty_printer.visit(v.function)} could not be determined (Unification failed)`
+			);
+			this.toBeUnifiedAnnotation = this.toBeUnifiedAnnotation.filter(
+				(v) => !JSON.stringify(v).includes(JSON.stringify(generic_type))
 			);
 		}
 
@@ -246,7 +259,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 
 		this.annotation(v.ctx, value);
 
-		return value;
+		return this.table.applyUnificationToValueTree(value);
 	}
 
 	visitValueExpressionAbstraction(v: {
