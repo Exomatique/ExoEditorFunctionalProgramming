@@ -3,6 +3,7 @@
 	import { dracula } from '@ddietr/codemirror-themes/dracula';
 	import { functional } from '../../functional_lang/FunctionalHighlighter';
 	import { functionalExtensions } from '../../functional_lang/FunctionalExtensions';
+	import { runBlockPlugin } from '../../functional_lang/FunctionalInterpreterExtension';
 	let {
 		data = $bindable(),
 		editable,
@@ -18,7 +19,7 @@
 	<CodeMirror
 		bind:value={data}
 		lang={functional()}
-		extensions={functionalExtensions()}
+		extensions={[functionalExtensions(), runBlockPlugin]}
 		theme={dracula}
 		{editable}
 	/>

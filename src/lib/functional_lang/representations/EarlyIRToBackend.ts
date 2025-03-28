@@ -9,7 +9,9 @@ import {
 	TypeExpression as BackendTypeExpression,
 	Value as BackendValue,
 	ValueExpression as BackendValueExpression,
-	Eval as BackendEval
+	Eval as BackendEval,
+	Program as BackendProgram,
+	Statement as BackendStatement
 } from './backend/BackendTypes';
 import { BackendIRPrettyPrinterVisitor } from './backend/BackendIRPrettyPrint';
 import {
@@ -340,13 +342,17 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		};
 	}
 
-	visitProgram(v: { type: 'Program'; statements: Statement[]; ctx: ParserRuleContext }) {
+	visitProgram(v: {
+		type: 'Program';
+		statements: Statement[];
+		ctx: ParserRuleContext;
+	}): BackendProgram {
 		const thisCopy = this;
 		return {
 			type: 'Program',
 			statements: v.statements.map((v) => {
 				thisCopy.toBeUnifiedAnnotation = [];
-				thisCopy.visit(v) as Statement;
+				const statement = thisCopy.visit(v) as BackendStatement;
 
 				this.annotation_list.push(
 					...thisCopy.toBeUnifiedAnnotation
@@ -362,6 +368,8 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 							};
 						})
 				);
+
+				return statement;
 			})
 		};
 	}

@@ -79,15 +79,15 @@ export class BackendIRPrettyPrinterVisitor extends BackendVisitor<string> {
 		const type = v.type;
 		switch (type as NodeType) {
 			case 'TypeAlias':
-				return this.visitTypeAlias(v) + ';';
+				return this.visitTypeAlias(v) + ';\n';
 			case 'TypeAtomic':
-				return this.visitTypeAtomic(v) + ';';
+				return this.visitTypeAtomic(v) + ';\n';
 			case 'ValueAssignment':
-				return this.visitValueAssignment(v) + ';';
+				return this.visitValueAssignment(v) + ';\n';
 			case 'ValueAtomic':
-				return this.visitValueAtomic(v) + ';';
+				return this.visitValueAtomic(v) + ';\n';
 			case 'Eval':
-				return this.visitEval(v) + ';';
+				return this.visitEval(v) + ';\n';
 			default:
 				throw new Error(`Unsupported statement type ${type}`);
 		}
