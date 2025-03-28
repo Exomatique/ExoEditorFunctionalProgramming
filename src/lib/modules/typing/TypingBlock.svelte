@@ -1,9 +1,8 @@
 <script lang="ts">
 	import CodeMirror from 'svelte-codemirror-editor';
-	import { functional } from '../../highlighter/FunctionalHighlighter';
 	import { dracula } from '@ddietr/codemirror-themes/dracula';
-	import { functionalLinter } from '../../highlighter/FunctionalLinter';
-
+	import { functional } from '../../functional_lang/FunctionalHighlighter';
+	import { functionalExtensions } from '../../functional_lang/FunctionalExtensions';
 	let {
 		data = $bindable(),
 		editable,
@@ -19,7 +18,7 @@
 	<CodeMirror
 		bind:value={data}
 		lang={functional()}
-		extensions={[functionalLinter]}
+		extensions={functionalExtensions()}
 		theme={dracula}
 		{editable}
 	/>

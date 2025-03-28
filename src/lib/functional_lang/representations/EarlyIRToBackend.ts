@@ -11,12 +11,25 @@ import {
 	ValueExpression as BackendValueExpression,
 	Eval as BackendEval
 } from './backend/BackendTypes';
+import { BackendIRPrettyPrinterVisitor } from './backend/BackendIRPrettyPrint';
+import {
+	AbstractionContext,
+	Value_expressionContext
+} from '../../../generated/grammar/FunctionalGrammarParser';
+
+export interface HoverData {
+	from: number;
+	to: number;
+	typeValue: string;
+}
 
 export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 	current_type: BackendTypeExpression | undefined;
 	table: SymbolTable = new SymbolTable();
 	pretty_printer: EarlyIRPrettyPrinterVisitor = new EarlyIRPrettyPrinterVisitor();
+	backend_pretty_printer: BackendIRPrettyPrinterVisitor = new BackendIRPrettyPrinterVisitor();
 	diagnostics: Diagnostic[] = [];
+	annotation_list: HoverData[] = [];
 
 	visitTypeAtomic(v: {
 		type: 'TypeAtomic';
@@ -54,8 +67,9 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		id: string;
 		ctx: ParserRuleContext;
 	}): BackendTypeExpression {
-		if (!this.table.lookupType(v.id)) {
-			this.diagnostics.push(this.error_diagnostic(v.ctx, `Unknown type ${v.id}`));
+		const type_value = this.table.lookupType(v.id);
+		if (!type_value) {
+			this.error_diagnostic(v.ctx, `Unknown type ${v.id}`);
 			throw new Error();
 		}
 
@@ -131,7 +145,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 
 		// Check value exists in scope
 		if (!value_ref) {
-			this.diagnostics.push(this.error_diagnostic(v.ctx, `Unknown value ${v.id}`));
+			this.error_diagnostic(v.ctx, `Unknown value ${v.id}`);
 			throw new Error();
 		}
 
@@ -144,13 +158,17 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			)
 		) {
 			// Check if type is valid
-			this.diagnostics.push(
-				this.error_diagnostic(
-					v.ctx,
-					`Value type1 : ${this.pretty_printer.visit(value_ref.value_type)}, expected type : ${this.pretty_printer.visit(this.current_type)}`
-				)
+			this.error_diagnostic(
+				v.ctx,
+				`Value type1 : ${this.pretty_printer.visit(value_ref.value_type)}, expected type : ${this.pretty_printer.visit(this.current_type)}`
 			);
 		}
+
+		this.annotation(v.ctx, {
+			type: 'ValueExpressionValue',
+			id: v.id,
+			value_type: this.current_type as BackendTypeExpression
+		});
 
 		return {
 			type: 'ValueExpressionValue',
@@ -187,11 +205,9 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 				returnType: current_typeCopy as BackendTypeExpression
 			};
 
-			this.diagnostics.push(
-				this.error_diagnostic(
-					v.function.ctx,
-					`Value type2 : ${this.pretty_printer.visit(function_value.value_type)}, expected type :${this.pretty_printer.visit(expected_type)}`
-				)
+			this.error_diagnostic(
+				v.function.ctx,
+				`Value type2 : ${this.pretty_printer.visit(function_value.value_type)}, expected type :${this.pretty_printer.visit(expected_type)}`
 			);
 		} else if (
 			!this.table.checkTypeEquality(
@@ -199,11 +215,9 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 				function_value.value_type.argumentType
 			)
 		) {
-			this.diagnostics.push(
-				this.error_diagnostic(
-					v.argument.ctx,
-					`Value type3 : ${this.pretty_printer.visit(argument_value.value_type)}, expected type :${this.pretty_printer.visit(function_value.value_type.argumentType)}`
-				)
+			this.error_diagnostic(
+				v.argument.ctx,
+				`Value type3 : ${this.pretty_printer.visit(argument_value.value_type)}, expected type :${this.pretty_printer.visit(function_value.value_type.argumentType)}`
 			);
 		}
 
@@ -216,7 +230,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 
 		this.table.exitScope();
 
-		return {
+		const value: BackendValueExpression = {
 			type: 'ValueExpressionApplication',
 			argument: argument_value,
 			function: function_value,
@@ -226,6 +240,10 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 				returnType: function_value.value_type
 			}
 		};
+
+		this.annotation(v.ctx, value);
+
+		return value;
 	}
 
 	visitValueExpressionAbstraction(v: {
@@ -235,17 +253,16 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		ctx: ParserRuleContext;
 	}): BackendValueExpression {
 		if (this.current_type?.type !== 'TypeExpressionArrow') {
-			this.diagnostics.push(
-				this.error_diagnostic(
-					v.ctx,
-					`Value : ${this.pretty_printer.visit(v.ctx)} is a function, expected type : ${this.pretty_printer.visit(this.current_type)}`
-				)
+			this.error_diagnostic(
+				v.ctx,
+				`Value : ${this.pretty_printer.visit(v.ctx)} is a function, expected type : ${this.pretty_printer.visit(this.current_type)}`
 			);
 
 			throw new Error();
 		}
 
 		this.table.enterScope();
+		const type_copy = this.current_type;
 
 		const arg_type = this.current_type.argumentType;
 
@@ -260,7 +277,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		const value: BackendValueExpression = {
 			type: 'ValueExpressionAbstraction',
 			argument: v.arguments[0],
-			value_type: arg_type,
+			value_type: type_copy,
 			expression:
 				v.arguments.length === 1
 					? this.visit(v.expression)
@@ -273,6 +290,8 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		};
 
 		this.table.exitScope();
+
+		this.annotation(v.ctx, value);
 
 		return value;
 	}
@@ -288,15 +307,16 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		const type = this.table.unifyGeneric(generic_type.generic_id);
 
 		if (!type) {
-			this.diagnostics.push(
-				this.error_diagnostic(
-					v.ctx,
-					`Value type of ${this.pretty_printer.visit(v.ctx)} could not be determined (Unification failed)`
-				)
+			this.error_diagnostic(
+				v.ctx,
+				`Value type of ${this.pretty_printer.visit(v.ctx)} could not be determined (Unification failed)`
 			);
 
 			throw new Error();
 		}
+
+		expression.value_type = type;
+		this.annotation(v.expression.ctx, expression);
 
 		return {
 			type: 'Eval',
@@ -313,12 +333,24 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		};
 	}
 
-	error_diagnostic(ctx: ParserRuleContext, message: string): Diagnostic {
-		return {
+	error_diagnostic(ctx: ParserRuleContext, message: string): void {
+		this.diagnostics.push({
 			from: ctx.start?.start || 0,
 			to: (ctx.stop?.stop || 0) + 1,
 			severity: 'error',
 			message
-		};
+		});
+	}
+
+	annotation(ctx: ParserRuleContext, expression: BackendValueExpression): void {
+		if (JSON.stringify(expression.value_type).includes('Generic')) return;
+		this.annotation_list.push({
+			from: ctx.start?.start || 0,
+			to: (ctx.stop?.stop || 0) + 1,
+			typeValue:
+				this.backend_pretty_printer.visit(expression) +
+				' : ' +
+				this.backend_pretty_printer.visitTypeExpression(expression.value_type)
+		});
 	}
 }

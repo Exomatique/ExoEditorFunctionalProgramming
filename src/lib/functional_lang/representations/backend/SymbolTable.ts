@@ -69,7 +69,14 @@ export class SymbolTable {
 					JSON.stringify({ type: 'TypeExpressionGeneric', generic_id } as TypeExpression)
 				)
 			) {
-				if (element.collapsed_generic.has(generic_id)) {
+				if (
+					element.collapsed_generic.has(generic_id) &&
+					!this.checkTypeEquality(
+						element.collapsed_generic.get(generic_id) as TypeExpression,
+						constraint,
+						false
+					)
+				) {
 					error = true;
 					break;
 				}
@@ -100,14 +107,24 @@ export class SymbolTable {
 		return element?.values?.get(name);
 	}
 
-	checkTypeEquality(type1: TypeExpression, type2: TypeExpression): boolean {
+	checkTypeEquality(
+		type1: TypeExpression,
+		type2: TypeExpression,
+		updateGenerics: boolean = true
+	): boolean {
 		if (type1.type === 'TypeExpressionGeneric') {
-			this.newGenericConstraint(type1.generic_id, type2);
-			return true;
+			if (updateGenerics) {
+				this.newGenericConstraint(type1.generic_id, type2);
+				return true;
+			}
+			return false;
 		}
 		if (type2.type === 'TypeExpressionGeneric') {
-			this.newGenericConstraint(type2.generic_id, type1);
-			return true;
+			if (updateGenerics) {
+				this.newGenericConstraint(type2.generic_id, type1);
+				return true;
+			}
+			return false;
 		}
 
 		if (type1.type === 'TypeExpressionArrow' && type2.type === 'TypeExpressionArrow') {
@@ -120,9 +137,6 @@ export class SymbolTable {
 		if (type1.type === 'TypeExpressionType' && type2.type === 'TypeExpressionType') {
 			return type1.id === type2.id;
 		}
-
-		console.log(type1);
-		console.log(type2);
 
 		return false;
 	}

@@ -37,7 +37,7 @@ export abstract class BackendVisitor<Result> {
 	}): Result;
 	abstract visitValueExpressionAbstraction(v: {
 		type: 'ValueExpressionAbstraction';
-		arguments: string[];
+		argument: string;
 		expression: ValueExpression;
 		ctx: ParserRuleContext;
 		value_type: TypeExpression;
