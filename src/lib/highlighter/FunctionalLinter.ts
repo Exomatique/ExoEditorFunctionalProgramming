@@ -1,7 +1,13 @@
 import { type Diagnostic, linter } from '@codemirror/lint';
 import { CharStream, CommonTokenStream } from 'antlr4ng';
 import { FunctionalGrammarLexer } from '../../generated/grammar/FunctionalGrammarLexer';
-import { FunctionalGrammarParser } from '../../generated/grammar/FunctionalGrammarParser';
+import {
+	FunctionalGrammarParser,
+	ProgramContext
+} from '../../generated/grammar/FunctionalGrammarParser';
+import SyntaxChecker from '../functional_lang/SyntaxChecker';
+import { EarlyIRToBackend } from '../functional_lang/representations/EarlyIRToBackend';
+import FrontendToIRVisitor from '../functional_lang';
 
 export const functionalLinter = linter((view) => {
 	let diagnostics: Diagnostic[] = [];
@@ -54,6 +60,20 @@ export const functionalLinter = linter((view) => {
 		) {},
 		reportContextSensitivity(recognizer, dfa, startIndex, stopIndex, prediction, configs) {}
 	});
+
+	const program: ProgramContext = parser.program();
+
+	if (diagnostics.length === 0) {
+		const visitor = new EarlyIRToBackend();
+		try {
+			const earlyId = new FrontendToIRVisitor().visitProgram(program);
+			console.log(visitor.visitProgram(earlyId));
+		} catch (e) {
+			console.log(e);
+		} finally {
+			diagnostics.push(...visitor.diagnostics);
+		}
+	}
 
 	parser.program();
 

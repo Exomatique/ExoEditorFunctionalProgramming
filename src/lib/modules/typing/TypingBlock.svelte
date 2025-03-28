@@ -2,7 +2,7 @@
 	import CodeMirror from 'svelte-codemirror-editor';
 	import { functional } from '../../highlighter/FunctionalHighlighter';
 	import { dracula } from '@ddietr/codemirror-themes/dracula';
-	import { functionalLinter } from '../../highlighter/FunctionalHighlighting';
+	import { functionalLinter } from '../../highlighter/FunctionalLinter';
 
 	let {
 		data = $bindable(),
