@@ -20,7 +20,7 @@ self.onmessage = async (event) => {
 				data: { output: backendPretty.visitStatement(statement) }
 			});
 			index = index + 1;
-		}, 1000);
+		}, 250);
 		const result = await runInterpreter(input);
 	} catch (error) {
 		self.postMessage({ success: false, error: (error as any).message });

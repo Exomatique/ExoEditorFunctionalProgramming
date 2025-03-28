@@ -46,6 +46,7 @@ export const runBlockPlugin = ViewPlugin.fromClass(
 
 		outputView: EditorView | undefined;
 		btn: HTMLButtonElement;
+		trash: HTMLButtonElement;
 		return_div: HTMLElement;
 		worker: Worker = new Worker(new URL('./FunctionalInterpreterWorker.ts', import.meta.url), {
 			type: 'module'
@@ -56,32 +57,43 @@ export const runBlockPlugin = ViewPlugin.fromClass(
 
 		constructor(readonly view: EditorView) {
 			let dom = document.createElement('div');
-			dom.className = 'relative flex justify-end m-2';
+			dom.className = 'relative flex justify-center items-center m-2';
+
+			this.trash = document.createElement('btn') as HTMLButtonElement;
+			let trashIcon = document.createElement('i');
+			trashIcon.className = 'fa fa-trash';
+
+			this.trash.className =
+				'py-4 px-4 btn-icon bg-red-500 hover:bg-red-700 font-bold ounded w-fit btn select-none cursor-pointer invisible';
+			this.trash.style.marginLeft = `${34}px`;
+			this.trash.onclick = (e) => {
+				this.destroy();
+			};
+			this.trash.appendChild(trashIcon);
+			dom.appendChild(this.trash);
+
+			let filler = document.createElement('div');
+			filler.className = 'flex-1';
+			dom.appendChild(filler);
 
 			this.btn = document.createElement('btn') as HTMLButtonElement;
 			this.btn.className =
-				'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-fit btn select-none';
+				'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-fit btn select-none cursor-pointer';
 			this.btn.textContent = 'Run Code';
 			this.btn.onclick = (e) => {
 				if (this.btn.classList.contains('disabled')) return;
 				this.btn.classList.add('disabled', 'cursor-progress');
-				this.runInterpreter();
+				this.trash.classList.remove('invisible');
 
 				if (this.outputView) this.outputView.destroy();
 
+				this.outputText = this.header_txt;
 				this.outputView = new EditorView({
 					parent: this.return_div,
 					extensions: [javascript({ typescript: true })]
 				});
 
-				this.outputText = this.header_txt;
-
-				this.outputView.setState(
-					EditorState.create({
-						doc: this.header_txt,
-						extensions: [dracula, functional(), lineNumbers(), EditorState.readOnly.of(true)]
-					})
-				);
+				this.runInterpreter();
 			};
 			dom.appendChild(this.btn);
 			view.dom.appendChild(dom);
@@ -102,12 +114,20 @@ export const runBlockPlugin = ViewPlugin.fromClass(
 
 			function startWorker(input: any) {
 				return new Promise((resolve, reject) => {
+					if (thisCopy.outputView) {
+						thisCopy.outputView.setState(
+							EditorState.create({
+								doc: thisCopy.outputText,
+								extensions: [dracula, functional(), lineNumbers(), EditorState.readOnly.of(true)]
+							})
+						);
+					}
+
 					thisCopy.worker.postMessage(input);
 
 					// Timeout logic: Kill worker if no response in 60s
 					thisCopy.timeoutId = setTimeout(() => {
-						thisCopy.destroy();
-						reject(new Error('Worker timeout exceeded'));
+						reject(new Error('Timeout exceeded'));
 					}, 60000);
 
 					thisCopy.worker.onmessage = (event) => {
@@ -133,9 +153,20 @@ export const runBlockPlugin = ViewPlugin.fromClass(
 			}
 
 			// Example usage
-			startWorker(this.backendRepresentation).finally(() =>
-				this.btn.classList.remove('disabled', 'cursor-progress')
-			);
+			startWorker(this.backendRepresentation)
+				.catch((e) => {
+					thisCopy.outputText += '// ' + e.message;
+					this.worker.terminate();
+
+					if (thisCopy.outputView)
+						thisCopy.outputView.setState(
+							EditorState.create({
+								doc: thisCopy.outputText,
+								extensions: [dracula, functional(), lineNumbers(), EditorState.readOnly.of(true)]
+							})
+						);
+				})
+				.finally(() => this.btn.classList.remove('disabled', 'cursor-progress'));
 		}
 
 		run() {}
@@ -216,6 +247,8 @@ export const runBlockPlugin = ViewPlugin.fromClass(
 		destroy() {
 			this.worker.terminate();
 			this.btn.classList.remove('disabled', 'cursor-progress', 'cursor-not-allowed');
+			this.trash.classList.add('invisible');
+			if (this.outputView) this.outputView?.destroy();
 			clearTimeout(this.timeoutId);
 		}
 	}
