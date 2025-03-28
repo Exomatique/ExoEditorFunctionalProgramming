@@ -1,15 +1,18 @@
 <script lang="ts">
 	import { Editor, ExoEditor, type ExoData } from '@exomatique/editor';
-	import TypingBlock from '../lib/modules/typing/TypingBlock.svelte';
 	import TypingModule from '../lib/modules/typing/TypingModule';
 
 	const exo_editor = new ExoEditor({
 		modules: [new TypingModule()],
-		default_module: 'md'
+		default_module: 'functional_typing'
 	});
 
 	let data: ExoData = $state([
-		{ type: 'functional_typing', data: 'Bonjour ', id: '91a950d3_1c43_4529_bac6_bc4e5786471a' }
+		{
+			type: 'functional_typing',
+			data: 'type A;\ntype B = C; ',
+			id: '91a950d3_1c43_4529_bac6_bc4e5786471a'
+		}
 	]);
 
 	let editable = $state(true);

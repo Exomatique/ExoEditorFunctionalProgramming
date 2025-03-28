@@ -5,9 +5,8 @@ import {
 	FunctionalGrammarParser,
 	ProgramContext
 } from '../../generated/grammar/FunctionalGrammarParser';
-import SyntaxChecker from '../functional_lang/SyntaxChecker';
 import { EarlyIRToBackend } from '../functional_lang/representations/EarlyIRToBackend';
-import FrontendToIRVisitor from '../functional_lang';
+import FrontendToIRVisitor from '../functional_lang/representations/FrontendToEarlyIRVisitor';
 
 export const functionalLinter = linter((view) => {
 	let diagnostics: Diagnostic[] = [];
