@@ -13,8 +13,8 @@ export const FunctionalLanguage = LRLanguage.define({
 				EVAL: t.keyword,
 				ABSTRACTION_ARROW: t.typeOperator,
 				TYPE_ARROW: t.typeOperator,
-				COMMENT: t.lineComment,
-				LINE_COMMENT: t.blockComment,
+				BlockComment: t.blockComment,
+				LINE_COMMENT: t.lineComment,
 				SEMI: t.separator,
 				'{ }': t.brace,
 				'( )': t.paren

@@ -67,11 +67,11 @@ export class BackendIRPrettyPrinterVisitor extends BackendVisitor<string> {
 		return `{ (${v.argument}) => ${this.visitValueExpression(v.expression)} }`;
 	}
 
-	visitEval(v: { type: 'Eval'; expression: ValueExpression; ctx: ParserRuleContext }): string {
-		return `eval ${this.visitValueExpression(v.expression)};`;
+	visitEval(v: { type: 'Eval'; expression: ValueExpression }): string {
+		return `eval ${this.visitValueExpression(v.expression)}`;
 	}
 
-	visitProgram(v: { type: 'Program'; statements: Statement[]; ctx: ParserRuleContext }): string {
+	visitProgram(v: { type: 'Program'; statements: Statement[] }): string {
 		return `${v.statements.map((statement) => this.visitStatement(statement)).join('\n')}`;
 	}
 

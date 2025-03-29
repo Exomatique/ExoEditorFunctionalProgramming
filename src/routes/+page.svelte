@@ -10,7 +10,7 @@
 	let data: ExoData = $state([
 		{
 			type: 'functional_typing',
-			data: 'type A;\ntype B = C; ',
+			data: 'type A;\nval f:A->A;\nval a:A;\neval f a; ',
 			id: '91a950d3_1c43_4529_bac6_bc4e5786471a'
 		}
 	]);

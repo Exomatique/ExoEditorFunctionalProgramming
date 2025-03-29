@@ -1,9 +1,11 @@
+import { FunctionalInterpreter } from './FunctionalInterpreter';
 import { BackendIRPrettyPrinterVisitor } from './representations/backend/BackendIRPrettyPrint';
-import { Program } from './representations/backend/BackendTypes';
+import { Program, Statement } from './representations/backend/BackendTypes';
 
 self.onmessage = async (event) => {
 	const input: Program = event.data;
 	const backendPretty = new BackendIRPrettyPrinterVisitor();
+	const interpreter = new FunctionalInterpreter();
 	try {
 		let index = 0;
 		const interval = setInterval(() => {
@@ -13,23 +15,25 @@ self.onmessage = async (event) => {
 				self.postMessage({ success: true, finished: true });
 				return;
 			}
-			const statement = input.statements[index];
+			const statement = interpreter.visit(input.statements[index]) as Statement;
 
-			self.postMessage({
-				success: true,
-				data: { output: backendPretty.visitStatement(statement) }
-			});
+			if (statement.type === 'Eval') {
+				self.postMessage({
+					success: true,
+					data: {
+						output: `${backendPretty.visitStatement(statement)} /* TYPE */ : ${backendPretty.visit(statement.value_type)} \n /* VALUE */ = ${backendPretty.visit(statement.expression)}`
+					}
+				});
+			} else {
+				self.postMessage({
+					success: true,
+					data: { output: `${backendPretty.visitStatement(statement)}` }
+				});
+			}
+
 			index = index + 1;
 		}, 250);
-		const result = await runInterpreter(input);
 	} catch (error) {
 		self.postMessage({ success: false, error: (error as any).message });
 	}
 };
-
-// Simulated interpreter function
-async function runInterpreter(input: any) {
-	return new Promise((resolve) => {
-		resolve({ output: `Processed: ${input}` });
-	});
-}

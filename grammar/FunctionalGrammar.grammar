@@ -4,9 +4,10 @@
 
 @skip {
     WS
-    COMMENT
+    BlockComment
     LINE_COMMENT
 }
+
 
 @tokens {
   @precedence {
@@ -24,6 +25,8 @@
   TYPE_ID {$[A-Z]$[a-zA-Z_0-9]*}
   VAL_ID {$[a-z]$[a-zA-Z_0-9]*}
   WS {$[ \t\n\r\f]+}
-  COMMENT {"/*"![]*"*/"}
   LINE_COMMENT {"//"![\r\n]*}
+  BlockComment[isolate] { "/*" blockCommentRest }
+  blockCommentRest { ![*] blockCommentRest | "*" blockCommentAfterStar }
+  blockCommentAfterStar { "/" | "*" blockCommentAfterStar | ![/*] blockCommentRest }
 }

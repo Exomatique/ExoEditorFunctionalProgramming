@@ -39,7 +39,7 @@ import { functional } from './FunctionalHighlighter';
 
 export const runBlockPlugin = ViewPlugin.fromClass(
 	class {
-		header_txt: string = `//Functional Language Interpreter v${import.meta.env.VITE_VERSION}
+		header_txt: string = `// Functional Language Interpreter v${import.meta.env.VITE_VERSION}
 //
 // Warning /!\\ : This language is just a learning tool
 `;

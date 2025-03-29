@@ -25,33 +25,26 @@ export abstract class BackendVisitor<Result> {
 	abstract visitValueExpressionValue(v: {
 		type: 'ValueExpressionValue';
 		id: string;
-		ctx: ParserRuleContext;
 		value_type: TypeExpression;
 	}): Result;
 	abstract visitValueExpressionApplication(v: {
 		type: 'ValueExpressionApplication';
 		function: ValueExpression;
 		argument: ValueExpression;
-		ctx: ParserRuleContext;
 		value_type: TypeExpression;
 	}): Result;
 	abstract visitValueExpressionAbstraction(v: {
 		type: 'ValueExpressionAbstraction';
 		argument: string;
 		expression: ValueExpression;
-		ctx: ParserRuleContext;
 		value_type: TypeExpression;
 	}): Result;
 	abstract visitEval(v: {
 		type: 'Eval';
+		value_type: TypeExpression;
 		expression: ValueExpression;
-		ctx: ParserRuleContext;
 	}): Result;
-	abstract visitProgram(v: {
-		type: 'Program';
-		statements: Statement[];
-		ctx: ParserRuleContext;
-	}): Result;
+	abstract visitProgram(v: { type: 'Program'; statements: Statement[] }): Result;
 
 	visit(v: any): Result {
 		const type = v.type;
