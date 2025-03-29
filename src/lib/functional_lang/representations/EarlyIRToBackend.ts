@@ -14,10 +14,6 @@ import {
 	Statement as BackendStatement
 } from './backend/BackendTypes';
 import { BackendIRPrettyPrinterVisitor } from './backend/BackendIRPrettyPrint';
-import {
-	AbstractionContext,
-	Value_expressionContext
-} from '../../../generated/grammar/FunctionalGrammarParser';
 
 export interface HoverData {
 	from: number;
@@ -46,6 +42,9 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		atomic: true;
 		ctx: ParserRuleContext;
 	}): BackendType {
+		if (this.table.lookupValue(v.id)) {
+			this.error_diagnostic(v.ctx, `Type ${v.id} is already defined before`);
+		}
 		this.table.newType(v);
 		return {
 			atomic: true,
@@ -66,6 +65,9 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			id: v.id,
 			expression: type_expression
 		};
+		if (this.table.lookupValue(v.id)) {
+			this.error_diagnostic(v.ctx, `Type ${v.id} is already defined before`);
+		}
 		this.table.newType(type);
 
 		return type;
@@ -117,6 +119,9 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			atomic: true,
 			value_type: this.visit(v.value_type) as TypeExpression
 		};
+		if (this.table.lookupValue(value.id)) {
+			this.error_diagnostic(v.ctx, `Value ${value.id} is already defined before`);
+		}
 		this.table.newValue(value);
 		return value;
 	}
@@ -283,6 +288,10 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		const type_copy = this.current_type;
 
 		const arg_type = this.current_type.argumentType;
+
+		if (this.table.lookupValue(v.arguments[0])) {
+			this.error_diagnostic(v.ctx, `Value ${v.arguments[0]} is already defined before`);
+		}
 
 		this.table.newValue({
 			atomic: true,
