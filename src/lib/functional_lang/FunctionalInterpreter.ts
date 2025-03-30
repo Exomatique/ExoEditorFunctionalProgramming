@@ -70,16 +70,23 @@ export class FunctionalInterpreter extends BackendVisitor<any> {
 		value_type: TypeExpression;
 	}): ValueExpression {
 		if (v.function.type === 'ValueExpressionAbstraction') {
-			return this.beta_reduction(v.function, v.argument);
+			return this.visit(this.beta_reduction(v.function, v.argument));
 		} else if (v.function.type === 'ValueExpressionApplication') {
+			const reducted = this.visit(v.function);
+
+			if (JSON.stringify(reducted) === JSON.stringify(v.function)) return v;
+
 			return this.visit({
 				...v,
 				function: this.visit(v.function)
 			});
 		} /*if (v.function.type === 'ValueExpressionValue') */ else {
+			const value = this.table.lookupValue(v.function.id);
+
+			if (!value || value.type === 'ValueAtomic') return v;
 			return this.visit({
 				...v,
-				function: this.table.lookupValue(v.function.id)
+				function: value.expression
 			});
 		}
 	}
@@ -89,6 +96,12 @@ export class FunctionalInterpreter extends BackendVisitor<any> {
 		expression: ValueExpression;
 		value_type: TypeExpression;
 	}): ValueExpression {
+		this.table.newValue({
+			atomic: true,
+			id: v.argument,
+			type: 'ValueAtomic',
+			value_type: v.value_type
+		});
 		return { ...v, expression: this.visit(v.expression) };
 	}
 	visitEval(v: { type: 'Eval'; value_type: TypeExpression; expression: ValueExpression }): Eval {

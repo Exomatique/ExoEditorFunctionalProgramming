@@ -185,10 +185,6 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			value_type: this.current_type as BackendTypeExpression
 		});
 
-		if (value_ref.type === 'ValueAssignment') {
-			return value_ref.expression;
-		}
-
 		return {
 			type: 'ValueExpressionValue',
 			id: v.id,
