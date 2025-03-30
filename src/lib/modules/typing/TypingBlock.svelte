@@ -4,6 +4,7 @@
 	import { functional } from '../../functional_lang/FunctionalHighlighter';
 	import { functionalExtensions } from '../../functional_lang/FunctionalExtensions';
 	import { runBlockPlugin } from '../../functional_lang/FunctionalInterpreterExtension';
+	import { resetPlugin } from '../../functional_lang/FunctionalInterpreterReset';
 	let {
 		data = $bindable(),
 		editable,
@@ -17,9 +18,9 @@
 
 <div class="relative">
 	<CodeMirror
-		bind:value={data}
+		value={data}
 		lang={functional()}
-		extensions={[functionalExtensions(), runBlockPlugin]}
+		extensions={[functionalExtensions(), runBlockPlugin, resetPlugin(data)]}
 		theme={dracula}
 		{editable}
 	/>

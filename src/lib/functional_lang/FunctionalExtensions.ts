@@ -1,5 +1,5 @@
 import { type Diagnostic, linter } from '@codemirror/lint';
-import { CharStream, CommonTokenStream } from 'antlr4ng';
+import { CharStream, CommonTokenStream, ConsoleErrorListener } from 'antlr4ng';
 import { FunctionalGrammarLexer } from '../../generated/grammar/FunctionalGrammarLexer';
 import {
 	FunctionalGrammarParser,
@@ -18,6 +18,7 @@ export const functionalExtensions = () => {
 		const charstream = CharStream.fromString(view.state.doc.toString());
 		const lexer = new FunctionalGrammarLexer(charstream);
 
+		lexer.removeErrorListener(ConsoleErrorListener.instance);
 		lexer.addErrorListener({
 			syntaxError(recognizer, offendingSymbol, line, charPositionInLine, msg, e) {
 				diagnostics.push({
@@ -43,6 +44,7 @@ export const functionalExtensions = () => {
 
 		const parser = new FunctionalGrammarParser(lexemeStream);
 
+		parser.removeErrorListener(ConsoleErrorListener.instance);
 		parser.addErrorListener({
 			syntaxError(recognizer, offendingSymbol, line, charPositionInLine, msg, e) {
 				diagnostics.push({
