@@ -1,7 +1,7 @@
 {
 	"name": "@exomatique/editor_exofunctional",
-	"version": "0.1.1",
-	"type": "module",
+	"version": "0.2.2",
+	"license": "MIT",
 	"scripts": {
 		"clean": "rm -rf ./build && rm -rf src/generated && rm -rf grammar/.antlr",
 		"generate": "java -jar node_modules/antlr4ng-cli/*.jar -Dlanguage=TypeScript -o src/generated/ -visitor -listener grammar/FunctionalGrammar.g4 && lezer-generator grammar/FunctionalGrammar.grammar -o src/generated/highlighter.js",
@@ -9,10 +9,31 @@
 		"build": "npm run generate && vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
+		"prepack": "svelte-kit sync && svelte-package && publint",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check ."
+	},
+	"files": [
+		"dist",
+		"!dist/**/*.test.*",
+		"!dist/**/*.spec.*"
+	],
+	"sideEffects": [
+		"**/*.css"
+	],
+	"svelte": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"svelte": "./dist/index.js"
+		}
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
 	},
 	"devDependencies": {
 		"@lezer/generator": "^1.7.2",
@@ -20,12 +41,14 @@
 		"@skeletonlabs/skeleton-svelte": "^1.0.0",
 		"@sveltejs/adapter-auto": "^4.0.0",
 		"@sveltejs/kit": "^2.16.0",
+		"@sveltejs/package": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tailwindcss/vite": "^4.0.0",
 		"@types/ace": "^0.0.52",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
 		"prettier-plugin-tailwindcss": "^0.6.11",
+		"publint": "^0.3.2",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.0.0",
