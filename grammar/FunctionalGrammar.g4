@@ -11,7 +11,7 @@ LINE_COMMENT: '//' ~[\r\n]* -> skip;
 
 type_expression: TYPE_ID # Type
     | '(' type=type_expression ')' # TypeParenthesis
-    | argument_type=type_expression '->' return_type=type_expression # Arrow;
+    | <assoc=right> argument_type=type_expression '->' return_type=type_expression # Arrow;
 
 value_expression: VAL_ID #Value
     | '(' expression=value_expression ')' # ValueParenthesis

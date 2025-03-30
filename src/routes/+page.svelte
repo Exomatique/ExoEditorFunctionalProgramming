@@ -10,7 +10,7 @@
 	let data: ExoData = $state([
 		{
 			type: 'functional_typing',
-			data: 'type A;\nval f:A->A;\nval a:A;\neval f a; ',
+			data: 'type X;\ntype Bool = X -> X -> X;\nval true: Bool = {(ifT ifF) => ifT};\nval false: Bool = {(ifT ifF) => ifF};\nval and: Bool -> Bool -> Bool = {(b1 b2 x y) => b1 (b2 x y) y}; eval and true true;',
 			id: '91a950d3_1c43_4529_bac6_bc4e5786471a'
 		}
 	]);

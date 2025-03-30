@@ -152,7 +152,6 @@ export const runBlockPlugin = ViewPlugin.fromClass(
 				});
 			}
 
-			// Example usage
 			startWorker(this.backendRepresentation)
 				.catch((e) => {
 					thisCopy.outputText += '// ' + e.message;
@@ -228,6 +227,8 @@ export const runBlockPlugin = ViewPlugin.fromClass(
 				const earlyId = new FrontendToIRVisitor().visitProgram(program);
 				backendRepresentation = visitor.visitProgram(earlyId);
 			} catch (e) {
+				error = true;
+				e;
 			} finally {
 				error = visitor.diagnostics.length !== 0;
 			}

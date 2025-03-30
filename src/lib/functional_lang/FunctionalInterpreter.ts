@@ -10,6 +10,7 @@ import {
 } from './representations/backend/BackendTypes';
 import { BackendVisitor } from './representations/backend/BackendVisitor';
 import { SymbolTable } from './representations/backend/SymbolTable';
+import { BackendIRPrettyPrinterVisitor } from './representations/backend/BackendIRPrettyPrint';
 
 export class FunctionalInterpreter extends BackendVisitor<any> {
 	table = new SymbolTable();
@@ -37,10 +38,15 @@ export class FunctionalInterpreter extends BackendVisitor<any> {
 		expression: ValueExpression;
 		value_type: TypeExpression;
 	}): Value {
-		const value = { ...v, expression: this.visit(v.expression) };
+		const value = { ...v, expression: v.expression };
 		this.table.newValue(value);
 		return value;
 	}
+
+	visitTypeExpressionGeneric(v: { type: 'TypeExpressionGeneric'; generic_id: number }) {
+		throw new Error();
+	}
+
 	visitValueAtomic(v: {
 		type: 'ValueAtomic';
 		id: string;
@@ -63,7 +69,19 @@ export class FunctionalInterpreter extends BackendVisitor<any> {
 		argument: ValueExpression;
 		value_type: TypeExpression;
 	}): ValueExpression {
-		return { ...v, function: this.visit(v.function), argument: this.visit(v.argument) };
+		if (v.function.type === 'ValueExpressionAbstraction') {
+			return this.beta_reduction(v.function, v.argument);
+		} else if (v.function.type === 'ValueExpressionApplication') {
+			return this.visit({
+				...v,
+				function: this.visit(v.function)
+			});
+		} /*if (v.function.type === 'ValueExpressionValue') */ else {
+			return this.visit({
+				...v,
+				function: this.table.lookupValue(v.function.id)
+			});
+		}
 	}
 	visitValueExpressionAbstraction(v: {
 		type: 'ValueExpressionAbstraction';
@@ -79,5 +97,86 @@ export class FunctionalInterpreter extends BackendVisitor<any> {
 	visitProgram(v: { type: 'Program'; statements: Statement[] }): Program {
 		const thisCopy = this;
 		return { ...v, statements: v.statements.map(thisCopy.visit) };
+	}
+
+	unique_id = 0;
+
+	alpha_renaming(v: ValueExpression, x: string, y: string): ValueExpression {
+		if (x === y) return v;
+		switch (v.type) {
+			case 'ValueExpressionValue': {
+				return { ...v, id: v.id === x ? y : v.id };
+			}
+			case 'ValueExpressionApplication': {
+				return {
+					...v,
+					function: this.alpha_renaming(v.function, x, y),
+					argument: this.alpha_renaming(v.argument, x, y)
+				};
+			}
+			case 'ValueExpressionAbstraction': {
+				let newArgumentId = v.argument;
+				if (v.argument === x) {
+					newArgumentId = v.argument + "'" + this.unique_id;
+					this.unique_id = this.unique_id + 1;
+				}
+
+				return {
+					...v,
+					argument: newArgumentId,
+					expression: this.alpha_renaming(
+						this.alpha_renaming(v.expression, v.argument, newArgumentId),
+						x,
+						y
+					)
+				};
+			}
+		}
+	}
+
+	var_substitution(current: ValueExpression, id: string, v: ValueExpression): ValueExpression {
+		switch (current.type) {
+			case 'ValueExpressionValue': {
+				if (current.id === id) return v;
+				return current;
+			}
+			case 'ValueExpressionApplication': {
+				return {
+					...current,
+					function: this.var_substitution(current.function, id, v),
+					argument: this.var_substitution(current.argument, id, v)
+				};
+			}
+			case 'ValueExpressionAbstraction': {
+				if (current.argument === id) {
+					let [argument, renaming_iter, ...rest] = (current.argument + "'").split("'");
+
+					let newArgumentId = argument + "'" + this.unique_id;
+					this.unique_id = this.unique_id + 1;
+
+					return {
+						...current,
+						argument: newArgumentId,
+						expression: this.var_substitution(
+							this.alpha_renaming(current.expression, current.argument, newArgumentId),
+							id,
+							v
+						)
+					};
+				}
+
+				return {
+					...current,
+					expression: this.var_substitution(current.expression, id, v)
+				};
+			}
+		}
+	}
+
+	beta_reduction(
+		func: ValueExpression & { type: 'ValueExpressionAbstraction' },
+		arg: ValueExpression
+	): ValueExpression {
+		return this.var_substitution(func.expression, func.argument, arg);
 	}
 }

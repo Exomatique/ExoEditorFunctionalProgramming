@@ -14,6 +14,7 @@ import {
 	Statement as BackendStatement
 } from './backend/BackendTypes';
 import { BackendIRPrettyPrinterVisitor } from './backend/BackendIRPrettyPrint';
+import { AbstractionContext } from '../../../generated/grammar/FunctionalGrammarParser';
 
 export interface HoverData {
 	from: number;
@@ -135,7 +136,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 	}): BackendValue {
 		const value_type = this.visit(v.value_type) as BackendTypeExpression;
 
-		this.current_type = value_type;
+		this.current_type = this.evaluate_type(value_type);
 
 		const expression = this.visit(v.expression) as BackendValueExpression;
 		const value: BackendValue = {
@@ -167,14 +168,14 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			this.table.newGenericConstraint(this.current_type.generic_id, value_ref.value_type);
 		} else if (
 			!this.table.checkTypeEquality(
-				value_ref.value_type,
-				this.current_type as BackendTypeExpression
+				this.evaluate_type(value_ref.value_type),
+				this.evaluate_type(this.current_type as BackendTypeExpression)
 			)
 		) {
 			// Check if type is valid
 			this.error_diagnostic(
 				v.ctx,
-				`Value type : ${this.pretty_printer.visit(value_ref.value_type)}, expected type : ${this.pretty_printer.visit(this.current_type)}`
+				`Value type : ${this.backend_pretty_printer.visit(value_ref.value_type)}, expected type4 : ${this.backend_pretty_printer.visit(this.current_type)}`
 			);
 		}
 
@@ -212,9 +213,11 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			returnType: current_typeCopy
 		};
 		const function_value = this.visit(v.function) as BackendValueExpression;
+		function_value.value_type = this.evaluate_type(function_value.value_type);
 
 		this.current_type = generic_type;
 		const argument_value = this.visit(v.argument) as BackendValueExpression;
+		argument_value.value_type = this.evaluate_type(argument_value.value_type);
 
 		if (function_value.value_type.type === 'TypeExpressionGeneric') {
 			this.table.newGenericConstraint(function_value.value_type.generic_id, {
@@ -231,17 +234,17 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 
 			this.error_diagnostic(
 				v.function.ctx,
-				`Value type : ${this.pretty_printer.visit(function_value.value_type)}, expected type :${this.pretty_printer.visit(expected_type)}`
+				`Value type : ${this.backend_pretty_printer.visit(function_value.value_type)}, expected type1 : ${this.backend_pretty_printer.visit(expected_type)}`
 			);
 		} else if (
 			!this.table.checkTypeEquality(
-				argument_value.value_type,
-				function_value.value_type.argumentType
+				this.evaluate_type(argument_value.value_type),
+				this.evaluate_type(function_value.value_type.argumentType)
 			)
 		) {
 			this.error_diagnostic(
 				v.argument.ctx,
-				`Value type : ${this.pretty_printer.visit(argument_value.value_type)}, expected type :${this.pretty_printer.visit(function_value.value_type.argumentType)}`
+				`Value type : ${this.backend_pretty_printer.visit(argument_value.value_type)}, expected type2 : ${this.backend_pretty_printer.visit(function_value.value_type.argumentType)}`
 			);
 		}
 
@@ -278,7 +281,7 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		if (this.current_type?.type !== 'TypeExpressionArrow') {
 			this.error_diagnostic(
 				v.ctx,
-				`Value : ${this.pretty_printer.visit(v.ctx)} is a function, expected type : ${this.pretty_printer.visit(this.current_type)}`
+				`Value : ${this.pretty_printer.visit(v.ctx)} is a function, expected type3 : ${this.pretty_printer.visit(this.current_type)}`
 			);
 
 			throw new Error();
@@ -299,7 +302,14 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 			value_type: arg_type,
 			type: 'ValueAtomic'
 		});
-		this.current_type = this.current_type.returnType;
+
+		this.annotation_list.push({
+			from: (v.ctx as AbstractionContext).start?.start || 0,
+			to: ((v.ctx as AbstractionContext).stop?.stop || 0) + 1,
+			message: v.arguments[0] + ' : ' + this.backend_pretty_printer.visit(arg_type)
+		});
+
+		this.current_type = this.evaluate_type(this.current_type.returnType);
 
 		const value: BackendValueExpression = {
 			type: 'ValueExpressionAbstraction',
@@ -343,12 +353,33 @@ export class EarlyIRToBackend extends EarlyIRVisitor<any> {
 		}
 
 		expression.value_type = type;
+		this.table.exitScope();
 
 		return {
 			type: 'Eval',
 			expression: expression,
 			value_type: type
 		};
+	}
+
+	evaluate_type(type: BackendTypeExpression): BackendTypeExpression {
+		switch (type.type) {
+			case 'TypeExpressionType': {
+				const lookuped_type = this.table.lookupType(type.id);
+				if (!lookuped_type) throw new Error('Unknown type');
+				switch (lookuped_type.type) {
+					case 'TypeAlias':
+						return lookuped_type.expression;
+					case 'TypeAtomic':
+						return type;
+				}
+			}
+			case 'TypeExpressionArrow':
+				return type;
+			case 'TypeExpressionGeneric':
+				const unified = this.table.unifyGeneric(type.generic_id);
+				return unified ? this.evaluate_type(unified) : type;
+		}
 	}
 
 	visitProgram(v: {

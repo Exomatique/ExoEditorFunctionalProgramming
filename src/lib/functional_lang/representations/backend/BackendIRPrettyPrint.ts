@@ -15,6 +15,10 @@ export class BackendIRPrettyPrinterVisitor extends BackendVisitor<string> {
 		return `${v.id}`;
 	}
 
+	visitTypeExpressionGeneric(v: { type: 'TypeExpressionGeneric'; generic_id: number }): string {
+		return `undefined`;
+	}
+
 	visitTypeExpressionArrow(v: {
 		type: 'TypeExpressionArrow';
 		argumentType: TypeExpression;

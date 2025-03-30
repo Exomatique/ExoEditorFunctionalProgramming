@@ -1,11 +1,13 @@
 import { Type, TypeExpression, Value, ValueExpression } from './BackendTypes';
 
 export class SymbolTable {
+	generic_types: Map<number, TypeExpression[]> = new Map();
+	collapsed_generic: Map<number, TypeExpression> = new Map();
 	stack: SymbolTableLevel[] = [new SymbolTableLevel()];
 	generic_count = 0;
 
 	enterScope() {
-		this.stack.push(new SymbolTableLevel(this.stack[0]));
+		this.stack.push(new SymbolTableLevel(this.stack[this.stack.length - 1]));
 	}
 
 	exitScope() {
@@ -18,7 +20,7 @@ export class SymbolTable {
 
 	newType(type: Type) {
 		if (!type.id) throw new Error();
-		this.stack[0].types.set(type.id, type);
+		this.stack[this.stack.length - 1].types.set(type.id, type);
 	}
 
 	newGenericType(): {
@@ -33,28 +35,23 @@ export class SymbolTable {
 			generic_id
 		};
 
-		this.stack[0].generic_types.set(generic_id, []);
+		this.generic_types.set(generic_id, []);
 
 		return type;
 	}
 
 	newGenericConstraint(generic_id: number, type: TypeExpression) {
-		let element: SymbolTableLevel | undefined = this.stack[0];
-		while (element && !element.generic_types.has(generic_id)) element = element.parent;
+		if (!this.generic_types.has(generic_id)) throw new Error('Unknown generic id');
 
-		if (!element) throw new Error('Unknown generic id');
-
-		const constraints = element.generic_types.get(generic_id) as TypeExpression[];
+		const constraints = this.generic_types.get(generic_id) as TypeExpression[];
 		constraints.push(type);
-		element.generic_types.set(generic_id, constraints);
+		this.generic_types.set(generic_id, constraints);
 	}
 
 	unifyGeneric(generic_id: number) {
-		let element: SymbolTableLevel | undefined = this.stack[0];
-		while (element && !element.generic_types.has(generic_id)) element = element.parent;
-		if (!element) throw new Error('Unknown generic id');
+		if (!this.generic_types.has(generic_id)) throw new Error('Unknown generic id');
 
-		let constraints = element.generic_types.get(generic_id) as TypeExpression[];
+		let constraints = this.generic_types.get(generic_id)?.map((v) => v) as TypeExpression[];
 		let error = true;
 
 		while (constraints.length !== 0) {
@@ -69,9 +66,9 @@ export class SymbolTable {
 				)
 			) {
 				if (
-					element.collapsed_generic.has(generic_id) &&
+					this.collapsed_generic.has(generic_id) &&
 					!this.checkTypeEquality(
-						element.collapsed_generic.get(generic_id) as TypeExpression,
+						this.collapsed_generic.get(generic_id) as TypeExpression,
 						constraint,
 						false
 					)
@@ -79,12 +76,12 @@ export class SymbolTable {
 					error = true;
 					break;
 				}
-				element.collapsed_generic.set(generic_id, constraint);
+				this.collapsed_generic.set(generic_id, constraint);
 				error = false;
 			}
 		}
 
-		return !error ? element.collapsed_generic.get(generic_id) : undefined;
+		return !error ? this.collapsed_generic.get(generic_id) : undefined;
 	}
 
 	applyUnificationToTypeTree(type: TypeExpression): TypeExpression {
@@ -100,11 +97,7 @@ export class SymbolTable {
 			case 'TypeExpressionGeneric': {
 				const generic_id = type.generic_id;
 
-				let element: SymbolTableLevel | undefined = this.stack[0];
-				while (element && !element.generic_types.has(generic_id)) element = element.parent;
-				if (!element) throw new Error('Unknown generic id');
-
-				return element.collapsed_generic.get(generic_id) || type;
+				return this.collapsed_generic.get(generic_id) || type;
 			}
 		}
 	}
@@ -136,18 +129,18 @@ export class SymbolTable {
 
 	newValue(value: Value) {
 		if (!value.id) throw new Error();
-		this.stack[0].values.set(value.id, value);
+		this.stack[this.stack.length - 1].values.set(value.id, value);
 	}
 
 	lookupType(name: string): Type | undefined {
-		let element: SymbolTableLevel | undefined = this.stack[0];
+		let element: SymbolTableLevel | undefined = this.stack[this.stack.length - 1];
 		while (element && !element.types.has(name)) element = element.parent;
 
 		return element?.types?.get(name);
 	}
 
 	lookupValue(name: string): Value | undefined {
-		let element: SymbolTableLevel | undefined = this.stack[0];
+		let element: SymbolTableLevel | undefined = this.stack[this.stack.length - 1];
 		while (element && !element.values.has(name)) element = element.parent;
 
 		return element?.values?.get(name);
@@ -192,8 +185,6 @@ export class SymbolTableLevel {
 	parent?: SymbolTableLevel;
 	values: Map<String, Value> = new Map();
 	types: Map<String, Type> = new Map();
-	generic_types: Map<number, TypeExpression[]> = new Map();
-	collapsed_generic: Map<number, TypeExpression> = new Map();
 
 	constructor(parent?: SymbolTableLevel) {
 		this.parent = parent;

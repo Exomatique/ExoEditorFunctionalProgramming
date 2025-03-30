@@ -10,6 +10,10 @@ export abstract class BackendVisitor<Result> {
 		argumentType: TypeExpression;
 		returnType: TypeExpression;
 	}): Result;
+	abstract visitTypeExpressionGeneric(v: {
+		type: 'TypeExpressionGeneric';
+		generic_id: number;
+	}): Result;
 	abstract visitValueAssignment(v: {
 		type: 'ValueAssignment';
 		id: string;
@@ -71,6 +75,8 @@ export abstract class BackendVisitor<Result> {
 				return this.visitEval(v);
 			case 'Program':
 				return this.visitProgram(v);
+			case 'TypeExpressionGeneric':
+				return this.visitTypeExpressionGeneric(v);
 			default:
 				throw new Error(`Node with type ${type} is invalid`);
 		}

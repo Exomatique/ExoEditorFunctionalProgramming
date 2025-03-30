@@ -21,7 +21,7 @@ self.onmessage = async (event) => {
 				self.postMessage({
 					success: true,
 					data: {
-						output: `${backendPretty.visitStatement(statement)} /* TYPE */ : ${backendPretty.visit(statement.value_type)} \n /* VALUE */ = ${backendPretty.visit(statement.expression)}`
+						output: `${backendPretty.visitStatement(input.statements[index])} /* TYPE */ : ${backendPretty.visit(statement.value_type)} \n /* VALUE */ = ${backendPretty.visit(statement.expression)}`
 					}
 				});
 			} else {
