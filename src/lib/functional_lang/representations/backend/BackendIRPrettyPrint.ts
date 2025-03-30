@@ -68,7 +68,14 @@ export class BackendIRPrettyPrinterVisitor extends BackendVisitor<string> {
 		expression: ValueExpression;
 		value_type: TypeExpression;
 	}): string {
-		return `{ (${v.argument}) => ${this.visitValueExpression(v.expression)} }`;
+		const args = [v.argument];
+
+		let current = v.expression;
+		while (current.type === 'ValueExpressionAbstraction') {
+			args.push(current.argument);
+			current = current.expression;
+		}
+		return `{( ${args.join(' ')} ) => ${this.visitValueExpression(current)} }`;
 	}
 
 	visitEval(v: { type: 'Eval'; expression: ValueExpression }): string {
