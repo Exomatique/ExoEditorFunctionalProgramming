@@ -1,6 +1,6 @@
 {
 	"name": "@exomatique/editor_exofunctional",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"scripts": {
 		"clean": "rm -rf ./build && rm -rf src/generated && rm -rf grammar/.antlr",
